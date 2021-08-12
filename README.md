@@ -25,6 +25,9 @@ on_movie_end /media/usbdisk/motion/nnet-sorter/client.py %f
 
 # Operation
 
+There are two threads: the socket listener & queue, and the inference
+thread. This allows handling incoming requests in a performant way.
+
 The server opens a socket and listens. The client sends it an MP4 full-
 pathname. The file must start with `%v`, the event number, followed by
 a hyphen. The server then scans all of the JPG files that start with the
