@@ -1,0 +1,35 @@
+# Introduction
+
+To help cut down on false positives when using motion, I created a server the
+queues object detection inferences and copies the movie to a new folder if
+it detected an object of interest.
+
+I have my cameras running on an embedded Intel Core i5 fanless platform so
+adding a GPU is not possible. Instead I plugged in a Google TPU stick and it
+is sufficient. Since the server queues the inferences after the pictures and
+movie have both been written, it can take however long is necessary.
+
+# Installation
+
+You'll need to setup the PyCoral TPU libraries on your host machine. Once
+that has been verified, you can test the server.
+
+```
+% ./server.py &
+:
+:
+% ./client.py <full_path_to_mp4>
+% ./client.py exit
+```
+
+# Operation
+
+The server opens a socket and listens. The client sends it an MP4 full-
+pathname. The file must start with `%v`, the event number, followed by
+a hyphen. The server then scans all of the JPG files that start with the
+prefix up to the hyphen. If it finds an object with 70% confidence, it
+moves the mp4 file to a new directory.
+
+Since images are recorded faster than they can be processed, we don't
+want to block motion, so the client does not wait for a response.
+
