@@ -2,7 +2,7 @@
 
 To help cut down on false positives when using [motion](https://motion-project.github.io/),
 I created a server that sorts the movie events depending if their constituent images contain
-a class from the MS COCO training set. It does this by a post-hook to "on_movie_event".
+a class from the MS COCO training set. It does this by a post-hook to `on_movie_end`.
 
 I have my cameras running on an embedded Intel Core i5 fanless platform so
 adding a GPU is not possible. Instead I plugged in a [Google USB Coral Accelerator TPU](https://coral.ai/products/accelerator)
