@@ -31,11 +31,15 @@ thread. This allows handling incoming requests in a performant way.
 The server opens a socket and listens. The client sends it an MP4 full-
 pathname. The file must start with `%v`, the event number, followed by
 a hyphen. The server then scans all of the JPG files that start with the
-prefix up to the hyphen. If it finds an object with 70% confidence, it
-moves the mp4 file to a new directory.
+prefix up to the hyphen. If it finds an object with 50% confidence, it
+moves the mp4 file to a new directory, along with the first image that 
+triggered the detection (for thumbnailing).
 
 Since images are recorded faster than they can be processed, we don't
 want to block motion, so the client does not wait for a response.
+
+If the client passes a `.jpg`, the sever will just return all objects 
+found to STDOUT and not move anything. It's a quick-check utility.
 
 # Example
 
