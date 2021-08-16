@@ -28,6 +28,7 @@ SAVE_DIR="/media/usbdisk/motion/saves/"
 PORT=19011
 
 class QueueThread(Thread):
+    """ Listens to the socket and queues a task """
     def __init__(self, serversocket, q):
         Thread.__init__(self)
         self.serversocket = serversocket
@@ -38,21 +39,24 @@ class QueueThread(Thread):
             time.sleep(0.001)
             try:
                 clientsocket, address = self.serversocket.accept()
+                # A 'task' is just a text string under 1024B
                 data = clientsocket.recv(1024)
                 if data:
                     print("Queue:", data)
                     self.q.append(data.decode('utf-8'))
+                # Client doesn't need to wait for a response.
                 clientsocket.close()
             except:
                 print('Exiting QueueThread on exception')
                 break
 
 class DetectThread(Thread):
+    """ Thread that runs object detection """
     def __init__(self, q):
         Thread.__init__(self)
-        
+        # Shared queue
         self.q = q
-        
+        # Load the model (slow!)
         script_dir = pathlib.Path(__file__).parent.absolute()
         model_file = os.path.join(
                 script_dir,
@@ -62,7 +66,7 @@ class DetectThread(Thread):
         self.interpreter = edgetpu.make_interpreter(model_file)
         self.interpreter.allocate_tensors()
         print("Model loaded")
-        
+        # Start the server
         self.serversocket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
         self.serversocket.bind((socket.gethostname(), PORT))
         self.serversocket.listen(5)
@@ -100,11 +104,14 @@ class DetectThread(Thread):
 
     def run(self):
         while True:
-            time.sleep(0.001)
+            # Prevent using 100% of the core
+            time.sleep(0.01)
             if len(self.q) > 0:
                 fn = self.q.popleft()
+                # If `exit`, then shut down gracefully
                 if fn == 'exit':
                     break
+                # If an `mp4` search for the event jpegs
                 if os.path.exists(fn) and re.match(r'.*\.mp4$', fn):
                     index = fn.split('-')[0]
                     images = glob.glob(index + '-*.jpg')
@@ -125,11 +132,13 @@ class DetectThread(Thread):
                         os.rename(first_image, SAVE_DIR + os.path.basename(first_image))
                     else:
                         print("...nothing to save")
+                # This is helpful for debugging, just check an image
                 elif os.path.exists(fn) and re.match(r'.*\.jpg$', fn):
                     print("Checking a single image (not moving it)")
                     self.process_file(fn)
                 else:
-                    print("not movie")
+                    print("not a movie (mp4), jpg, or `exit` command")
+        # Note: you still might need to wait for the socket to free
         self.serversocket.close()
 
 def main():
@@ -138,6 +147,7 @@ def main():
     queueThread = QueueThread(detectThread.serversocket, masterQueue)
     queueThread.start()
     detectThread.start()
+    # Wait on the detection thread to exit
     detectThread.join()
 
 if __name__ == "__main__":
