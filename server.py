@@ -15,6 +15,7 @@ import re
 import glob
 
 from threading import Thread
+from threading import Lock
 from collections import deque
 
 from pycoral.utils import edgetpu
@@ -29,10 +30,11 @@ PORT=19011
 
 class QueueThread(Thread):
     """ Listens to the socket and queues a task """
-    def __init__(self, serversocket, q):
+    def __init__(self, serversocket, q, mutex):
         Thread.__init__(self)
         self.serversocket = serversocket
         self.q = q
+        self.mutex = mutex
 
     def run(self):
         while True:
@@ -43,19 +45,26 @@ class QueueThread(Thread):
                 data = clientsocket.recv(1024)
                 if data:
                     print("Queue:", data)
-                    self.q.append(data.decode('utf-8'))
+                    try:
+                        self.mutex.acquire()
+                        self.q.append(data.decode('utf-8'))
+                    finally:
+                        self.mutex.release()
                 # Client doesn't need to wait for a response.
                 clientsocket.close()
-            except:
+            except Exception as e:
                 print('Exiting QueueThread on exception')
+                print('Bad file descriptor means probably got an exit')
+                print(e)
                 break
 
 class DetectThread(Thread):
     """ Thread that runs object detection """
-    def __init__(self, q):
+    def __init__(self, q, mutex):
         Thread.__init__(self)
         # Shared queue
         self.q = q
+        self.mutex = mutex
         # Load the model (slow!)
         script_dir = pathlib.Path(__file__).parent.absolute()
         model_file = os.path.join(
@@ -105,9 +114,13 @@ class DetectThread(Thread):
     def run(self):
         while True:
             # Prevent using 100% of the core
-            time.sleep(0.01)
+            time.sleep(0.001)
             if len(self.q) > 0:
-                fn = self.q.popleft()
+                try:
+                    self.mutex.acquire()
+                    fn = self.q.popleft()
+                finally:
+                    self.mutex.release()
                 # If `exit`, then shut down gracefully
                 if fn == 'exit':
                     break
@@ -142,9 +155,10 @@ class DetectThread(Thread):
         self.serversocket.close()
 
 def main():
+    mutex = Lock()
     masterQueue = deque()
-    detectThread = DetectThread(masterQueue)
-    queueThread = QueueThread(detectThread.serversocket, masterQueue)
+    detectThread = DetectThread(masterQueue, mutex)
+    queueThread = QueueThread(detectThread.serversocket, masterQueue, mutex)
     queueThread.start()
     detectThread.start()
     # Wait on the detection thread to exit
