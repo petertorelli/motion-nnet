@@ -75,7 +75,7 @@ class DetectThread(Thread):
                 image.size,
                 lambda size: image.resize(size, Image.ANTIALIAS))
         self.interpreter.invoke()
-        objs = detect.get_objects(self.interpreter, 0.70, scale)
+        objs = detect.get_objects(self.interpreter, 0.50, scale)
         count = 0
         if not objs:
             print("...no objects")
@@ -111,17 +111,23 @@ class DetectThread(Thread):
                     save = False
                     print("Checking %d images in %s" % (len(images), fn))
                     x = 0
+                    first_image = None
                     for image in images:
                         x = x + 1
                         print("check_image_file(%s) [%d/%d]" % (image, x, len(images)), end='')
                         if self.process_file(image):
                             save = True
+                            first_image = image
                             break
                     if save:
-                        print("...saving this movie")
+                        print("...saving this movie (and the first detected image)")
                         os.rename(fn, SAVE_DIR + os.path.basename(fn))
+                        os.rename(first_image, SAVE_DIR + os.path.basename(first_image))
                     else:
                         print("...nothing to save")
+                elif os.path.exists(fn) and re.match(r'.*\.jpg$', fn):
+                    print("Checking a single image (not moving it)")
+                    self.process_file(fn)
                 else:
                     print("not movie")
         self.serversocket.close()
