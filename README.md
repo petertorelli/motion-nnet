@@ -80,3 +80,8 @@ $ ./client.py /media/usbdisk/motion/captures/13-20210812193848.mp4
 $ ./client.py exit
 ```
 
+# Picture of the build
+
+I bought a small quad core i5 fanless Intel box. It is actually slower than the Arm v8 core, which I didn't realize until I ran CoreMark on both. That's a PPoE router supplying power to the CCTV cameras. External 1TB rotational drive and the Google TPU down on the bottom attached by USB2.
+
+![Image of the build.](build.jpeg)
